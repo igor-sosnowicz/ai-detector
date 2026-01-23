@@ -1,0 +1,74 @@
+[project]
+name = "python-project-initialiser"
+version = "0.1.0"
+description = "python-project-initialiser-description"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "loguru>=0.7.3",
+    "pre-commit>=4.3.0",
+    "pydantic>=2.12.3",
+    "typer>=0.20.0",
+]
+
+[dependency-groups]
+dev = ["pytest>=7.0.0", "ruff>=0.1.0", "mypy>=1.0.0"]
+
+[project.scripts]
+app = "src.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.format]
+indent-style = "space"
+line-ending = "auto"
+quote-style = "double"
+docstring-code-format = true
+skip-magic-trailing-comma = false
+
+
+[tool.ruff.lint]
+select = ["ALL"]
+
+ignore = [
+    "ANN002",  # Allow for untyped *args.
+    "ANN003",  # Allow for untyped **kwargs.
+    "COM812",  # Ignore missing trailing comma, `ruff` formatter already enforces that.
+    "D203",    # Incorrect blank line before class.
+    "D205",    # Do not require blank line after docstring, it conflicts with the formatter.
+    "D212",    # Let multi-line docstring start at the second line.
+    "EM101",   # Allow for string literals in exception constructors.
+    "EM102",   # Allow for f-strings in exception constructors.
+    "PLC0415", # Let local imports be used, e.g. for lazy loading.
+    "TRY003",  # Also, allow for raising exceptions with long literal messages.
+]
+
+[tool.ruff.lint.per-file-ignores]
+
+# Disable certain rules for tests.
+"tests/**/*.py" = [
+    "S101",   # Allow for asserts allowed in tests.
+    "ARG",    # Ignore unused function arguments, because fixtures are not ordinary arguments.
+    "SLF001", # Private members may be accessed in tests.
+]
+
+# Suppress warnings for the setup script.
+"initialise.py" = [
+    "T201",  # Allow print statements in the setup script for user feedback.
+    "S603",  # Allow subprocess calls with user-provided input in a controlled setup context.
+]
