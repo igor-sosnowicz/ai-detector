@@ -1,0 +1,38 @@
+services:
+  app:
+    image: ai-detector:latest
+    container_name: ai-detector-app
+    env_file: .env
+    build:
+      context: .
+      dockerfile: Dockerfile
+    expose:
+      - "7123"
+    volumes:
+      - ./data/:/app/data
+    environment:
+      - API_PORT=7123
+    networks:
+      - app-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: ai-detector-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    environment:
+      - DOMAIN=${DOMAIN}
+    command: /bin/sh -c "envsubst '$$DOMAIN' < /etc/nginx/nginx.conf > /tmp/nginx.conf && nginx -g 'daemon off;' -c /tmp/nginx.conf"
+    depends_on:
+      - app
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

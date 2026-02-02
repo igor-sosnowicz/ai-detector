@@ -1,21 +1,33 @@
 [project]
-name = "python-project-initialiser"
+name = "ai-detector"
 version = "0.1.0"
-description = "python-project-initialiser-description"
+description = "AI Detector for detection of LLM generated pieces of text."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "cerebras-cloud-sdk>=1.64.1",
+    "diskcache>=5.6.3",
+    "emoji>=2.15.0",
+    "fastapi>=0.128.0",
     "loguru>=0.7.3",
-    "pre-commit>=4.3.0",
+    "nltk>=3.9.2",
+    "pandas>=3.0.0",
+    "pyarrow>=23.0.0",
     "pydantic>=2.12.3",
-    "typer>=0.20.0",
+    "python-whois>=0.9.6",
+    "scikit-learn>=1.8.0",
+    "thinkst-zippy>=0.1.3",
+    "tqdm>=4.67.1",
+    "transformers>=4.57.6",
+    "uvicorn>=0.40.0",
 ]
 
 [dependency-groups]
-dev = ["pytest>=7.0.0", "ruff>=0.1.0", "mypy>=1.0.0"]
+
+dev = ["pytest>=7.0.0", "ruff>=0.1.0", "mypy>=1.0.0", "pre-commit>=4.3.0"]
 
 [project.scripts]
-app = "src.main:main"
+ai-detector = "src.main:run_api"
 
 [build-system]
 requires = ["hatchling"]
@@ -52,6 +64,7 @@ ignore = [
     "D203",    # Incorrect blank line before class.
     "D205",    # Do not require blank line after docstring, it conflicts with the formatter.
     "D212",    # Let multi-line docstring start at the second line.
+    "D413",    # Do not require a blank line after `Returns` section.
     "EM101",   # Allow for string literals in exception constructors.
     "EM102",   # Allow for f-strings in exception constructors.
     "PLC0415", # Let local imports be used, e.g. for lazy loading.
@@ -69,6 +82,6 @@ ignore = [
 
 # Suppress warnings for the setup script.
 "initialise.py" = [
-    "T201",  # Allow print statements in the setup script for user feedback.
-    "S603",  # Allow subprocess calls with user-provided input in a controlled setup context.
+    "T201", # Allow print statements in the setup script for user feedback.
+    "S603", # Allow subprocess calls with user-provided input in a controlled setup context.
 ]

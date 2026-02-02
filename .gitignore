@@ -12,3 +12,15 @@ wheels/
 # Python tools
 .*_cache
 .python-version
+
+# Project-specific.
+config.toml
+todo.md
+
+# Exclude everything except the deployment script.
+!scripts
+/scripts/*
+!/scripts/deploy.sh
+
+# Secrets and configuration.
+.env

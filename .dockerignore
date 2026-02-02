@@ -1,0 +1,12 @@
+.venv
+.ruff_cache
+scripts/
+tests/
+compose.yaml
+Dockerfile
+.pre-commit-config.yaml
+todo.md
+data/datasets/
+__pycache__
+*.pyc
+.git

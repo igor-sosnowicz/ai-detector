@@ -1,17 +1,35 @@
 """Entry point to the application as a Typer CLI."""
 
-import typer
+import uvicorn
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 
+from src.api.router import lifespan
+from src.api.router import router as main_router
 from src.configuration import config
 
-app = typer.Typer(help=f"CLI for {config.project_name}", no_args_is_help=True)
 
+def run_api() -> None:
+    """Start up the backed sharing the Web API."""
+    app = FastAPI(lifespan=lifespan)
 
-@app.command()
-def main() -> None:
-    """Print a greeting."""
-    typer.echo(f"Hello, world! It is {config.project_name}.")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=config.cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    @app.get("/")
+    async def root() -> RedirectResponse:
+        """Redirect root to docs."""
+        return RedirectResponse(url="/docs")
+
+    app.include_router(main_router)
+    uvicorn.run(app, host=config.api_host, port=config.api_port)
 
 
 if __name__ == "__main__":
-    app()
+    run_api()
