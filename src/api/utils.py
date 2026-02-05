@@ -45,7 +45,7 @@ def get_length_adjusted_confidence(
             the higher the length penalty on confidence will be.
     """
     words = len(text.split())
-    min_words = 200
+    min_words = 50
     if words > min_words:
         return (confidence, None)
 
@@ -57,6 +57,8 @@ def get_length_adjusted_confidence(
     )
 
     adjusted_confidence = confidence - (min_words - words) / min_words
+    # Clamp to [0, 1] to avoid negative confidence values.
+    adjusted_confidence = max(0.0, min(1.0, adjusted_confidence))
     return (adjusted_confidence, remark)
 
 
@@ -74,6 +76,8 @@ def map_score_to_confidence(score: float) -> float:
         float: Confidence value in range [0.0, 1.0]
     """
     half = 0.5
+    # Clamp score to [0, 1] in case upstream adjustments pushed it out of bounds.
+    score = max(0.0, min(1.0, score))
     if score >= half:
         # Map [0.5, 1.0] to [0.0, 1.0].
         return (score - 0.5) * 2

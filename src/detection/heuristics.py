@@ -1,12 +1,13 @@
 """Module with heuristic checks for LLM generated content."""
 
+from pathlib import Path
 from re import search
 from typing import override
 
 import emoji
 
 from src.configuration import config
-from src.data_models import Language
+from src.data_models import Language, Range
 from src.detection.detector import Detector
 from src.nlp.sentence_splitter import NLTKSentenceSplitter
 
@@ -21,6 +22,43 @@ class Heuristics(Detector):
         self._phrases = config.suspicious_phrases_file.read_text().splitlines()
         self._sentence_splitter = NLTKSentenceSplitter()
         self._language: Language = language
+        self._persistence_path = (
+            Path("./data/models/heuristic_detector_parameters.json")
+            .expanduser()
+            .resolve()
+        )
+
+        self._threshold = 0.6
+        self._calculate_em_dashes_frequency_weight = 1.0
+        self._lacks_is_or_are_weight = 2.0
+        self._has_not_only_but_weight = 1.0
+        self._has_its_not_just_its_about_weight = 1.0
+        self._contains_emoji_weight = 0.9
+        self._contains_curly_symbols_weight = 1.5
+        self._calculate_suspicious_phrases_frequency_weight = 15.0
+
+        self.load()
+
+    @override
+    def get_tunable_attributes(self) -> dict[str, Range]:
+        return {
+            "_threshold": Range(min=0.0, max=1.0, type=float),
+            "_calculate_em_dashes_frequency_weight": Range(
+                min=0.2, max=2.0, type=float
+            ),
+            "_lacks_is_or_are_weight": Range(min=0.5, max=2.0, type=float),
+            "_has_not_only_but_weight": Range(min=0.5, max=2.0, type=float),
+            "_has_its_not_just_its_about_weight": Range(min=0.5, max=2.0, type=float),
+            "_contains_emoji_weight": Range(min=0.5, max=2.0, type=float),
+            "_contains_curly_symbols_weight": Range(min=0.5, max=2.0, type=float),
+            "_calculate_suspicious_phrases_frequency_weight": Range(
+                min=2.0, max=30.0, type=float
+            ),
+        }
+
+    @override
+    def get_threshold(self) -> float:
+        return self._threshold
 
     @override
     def detect(self, text: str, language: Language) -> float:
@@ -33,13 +71,17 @@ class Heuristics(Detector):
         self._sentence_count = len(sentences)
 
         check_weights = {
-            self._calculate_em_dashes_frequency: 1.0,
-            self._lacks_is_or_are: 2.0,
-            self._has_not_only_but: 1.0,
-            self._has_its_not_just_its_about: 1.0,
-            self._contains_emoji: 0.9,
-            self._contains_curly_symbols: 1.5,
-            self._calculate_suspicious_phrases_frequency: 15.0,
+            self._calculate_em_dashes_frequency: (
+                self._calculate_em_dashes_frequency_weight
+            ),
+            self._lacks_is_or_are: self._lacks_is_or_are_weight,
+            self._has_not_only_but: self._has_not_only_but_weight,
+            self._has_its_not_just_its_about: self._has_its_not_just_its_about_weight,
+            self._contains_emoji: self._contains_emoji_weight,
+            self._contains_curly_symbols: self._contains_curly_symbols_weight,
+            self._calculate_suspicious_phrases_frequency: (
+                self._calculate_suspicious_phrases_frequency_weight,
+            ),
         }
         score = 0.0
         total_weight = 0.0

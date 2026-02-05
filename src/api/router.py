@@ -22,6 +22,7 @@ from src.api.utils import (
 from src.detection.compression_based import CompressionBasedDetector
 from src.detection.heuristics import Heuristics
 from src.detection.llm_based import calculate_frequency_of_rule_of_three
+from src.detection.spelling import SpellingDetector
 from src.ml.stylometric_classifier import StylometricClassifier
 
 router = APIRouter()
@@ -29,23 +30,20 @@ rate_limiter = RateLimiter()
 
 english_heuristics = Heuristics(language="english")
 perplexity_detector = CompressionBasedDetector()
-# language_detector =
 stylometric_classifier = StylometricClassifier()
+english_spelling = SpellingDetector()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:  # noqa: ARG001, The signature of the function cannot be changed but `app` is not needed.
     """Perform startup and shutdown chores associated with the API."""
     await stylometric_classifier.prepare_model()
-    logger.debug(
-        "Test accuracy of stylometric classifier: "
-        f"{await stylometric_classifier.test()}"
-    )
+
     yield
 
 
 @router.get("/health")
-async def check_health() -> HealthcheckResponse:
+async def check_health(fastapi_request: Request) -> HealthcheckResponse:
     """
     Check if the API function well.
 
@@ -53,6 +51,9 @@ async def check_health() -> HealthcheckResponse:
 
     **HealthcheckResponse**: Report on health status of the API and its subsystems.
     """
+    ip_address = get_ip_address_or_raise(fastapi_request)
+    rate_limiter(identifier=ip_address)
+
     return HealthcheckResponse(
         is_healthy=True,
     )
@@ -97,25 +98,24 @@ async def is_llm_generated(
 
     match request.method:
         case EvaluationMethod.FASTEST:
-            score = english_heuristics.detect(request.text)
-            threshold = 0.6
+            score = english_heuristics.detect(request.text, "english")
+            threshold = english_heuristics.get_threshold()
 
         case EvaluationMethod.FAST:
-            raise HTTPException(
-                status_code=500, detail="A method is not supported yet."
-            )
+            score = english_spelling.detect(request.text, "english")
+            threshold = english_spelling.get_threshold()
 
         case EvaluationMethod.BALANCED:
             score = perplexity_detector.detect(request.text, "english")
-            threshold = 1.0
+            threshold = perplexity_detector.get_threshold()
 
         case EvaluationMethod.MORE_ACCURATE:
             score = await calculate_frequency_of_rule_of_three(request.text)
             threshold = 0.65
 
         case EvaluationMethod.MOST_ACCURATE:
-            score = stylometric_classifier(request.text)
-            threshold = 0.6
+            score = stylometric_classifier.detect(request.text, "english")
+            threshold = stylometric_classifier.get_threshold()
 
         case _:
             raise HTTPException(status_code=500, detail="A method is invalid.")
@@ -124,6 +124,8 @@ async def is_llm_generated(
         confidence=score, text=request.text
     )
     confidence = map_score_to_confidence(confidence)
+
+    logger.info(f"Score: {score}\n\nText: {request.text}")
 
     return LLMDetectionResponse(
         is_llm_generated=score >= threshold,

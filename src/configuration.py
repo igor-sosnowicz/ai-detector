@@ -32,9 +32,10 @@ class Configuration(BaseModel):
         "qwen-3-32b",
     ]
 
-    sqlite_database: Path = Path("./data/dataset/prompts/prompts.db")
+    sqlite_database: Path = Path("./data/prompts.db")
     datasets_directory: Path = Path("./data/datasets")
     llm_cache_directory: Path = Path(".cache/llm")
+    nltk_missing_words: Path = Path("./data/unknown_words.txt")
 
     main_dataset: str = "main"
     samples: int = Field(100, ge=20)

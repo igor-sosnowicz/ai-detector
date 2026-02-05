@@ -1,11 +1,13 @@
 """Module with project-wide data models."""
 
+import json
 import uuid
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Literal, Self, override
+from pathlib import Path
+from typing import Any, Literal, Self, override
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -16,6 +18,78 @@ Language = Literal["english", "french", "german", "spanish", "polish"]
 ChatRole = Literal["assistant", "user", "tool", "system"]
 SubsetName = Literal["training", "validation", "testing"]
 TensorisedSample = tuple[np.ndarray, np.ndarray]
+Number = float | int
+
+
+class Range(BaseModel):
+    """Inclusive continuous range of numeric values."""
+
+    min: Number
+    max: Number
+    type: type[Number]
+
+
+class FilePersistent(ABC):
+    """An interface for object that support persistence in a disk file."""
+
+    _persistence_path: Path
+
+    @abstractmethod
+    def get_tunable_attributes(self) -> dict[str, Range]:
+        """
+        Get a mapping of tunable attributes with their ranges.
+
+        Returns:
+            dict[str, Range]: Mapping of tunable attributes with their ranges of valid
+                values.
+        """
+
+    def set_tunable_attributes(self, attributes: dict[str, Number]) -> None:
+        """
+        Set tunable attributes to specific values.
+
+        Parameter `attributes` matches perfectly output of the optimise() function
+        and should to set optimal parameter values for the detector. Setting individual
+        parameters can and should be done via usual dot syntax.
+
+        Args:
+            attributes (dict[str, Number]): Mapping of attribute names to their values
+                that should be set.
+
+        Raises:
+            ValueError: Raised if there is an attempt to set a parameter that does not
+                exist in the detector.
+        """
+        for attribute, value in attributes.items():
+            if not hasattr(self, attribute):
+                raise ValueError(
+                    f"There is no such parameter `{attribute}` for {self.__qualname__}."
+                )
+            setattr(self, attribute, value)
+
+    def save(self) -> None:
+        """Save current values of model parameters to a file."""
+        key_value_pairs = {
+            attribute: getattr(self, attribute)
+            for attribute in self.get_tunable_attributes()
+        }
+        self._persistence_path.write_text(json.dumps(key_value_pairs))
+
+    def load(self) -> None:
+        """Load model parameters from a file to memory."""
+        if not self._persistence_path.exists():
+            raise FileNotFoundError(
+                f"There is no such model file {self._persistence_path} for "
+                f"{type(self).__qualname__} to load it."
+            )
+
+        parameters: dict[str, Any] = json.loads(self._persistence_path.read_text())
+        self.set_tunable_attributes(parameters)
+
+    @classmethod
+    def delete(cls) -> None:
+        """Delete the file preserving the instance."""
+        cls._persistence_path.unlink(missing_ok=True)
 
 
 class TensorConvertible(ABC):
@@ -59,6 +133,7 @@ class Sample(BaseModel, TensorConvertible):
     author: str  # LLM's model or author's name
     prompt_uuid: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(tz=UTC))
+    language: Language = "english"
 
     @override
     def to_tensors(self) -> TensorisedSample:
@@ -69,6 +144,17 @@ class Sample(BaseModel, TensorConvertible):
             token_ids,
             self.label.one_hot_encode(),
         )
+
+    def to_probability(self) -> float:
+        """
+        Convert a label to float point value.
+
+        Returns:
+            float: Floating point value of the label.
+        """
+        if self.label == SampleType.FULLY_HUMAN_WRITTEN:
+            return 0.0
+        return 1.0
 
 
 class DataSplitFractions(BaseModel):
@@ -175,3 +261,26 @@ class ChatMessage(BaseModel):
             "role": self.role,
             "timestamp": self.timestamp.isoformat(),
         }
+
+
+class Evaluation(BaseModel):
+    """Evaluation sheet for a detector."""
+
+    accuracy: float = Field(..., ge=0.0, le=1.0)
+    recall: float = Field(..., ge=0.0, le=1.0)
+    precision: float = Field(..., ge=0.0, le=1.0)
+    f1_score: float = Field(..., ge=0.0, le=1.0)
+
+    def __str__(self) -> str:
+        """
+        Convert the evaluation into a textual form.
+
+        Returns:
+            str: Pretty textual form of an evaluation.
+        """
+        return (
+            f"  Accuracy:  {self.accuracy:.4f}\n"
+            f"  Recall:  {self.recall:.4f}\n"
+            f"  Precision: {self.precision:.4f}\n"
+            f"  F1 Score:  {self.f1_score:.4f}"
+        )

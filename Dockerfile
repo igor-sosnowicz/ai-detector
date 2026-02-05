@@ -14,4 +14,4 @@ EXPOSE ${API_PORT}
 
 HEALTHCHECK CMD uv run --no-dev ai-detector --health || exit 1
 
-CMD ["uv", "run", "--frozen", "--no-dev", "ai-detector"]
+CMD ["uv", "run", "--frozen", "--no-dev", "ai-detector", "api"]

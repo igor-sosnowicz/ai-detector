@@ -9,12 +9,14 @@ from typing import override
 
 import httpx
 import pandas as pd
+from cerebras.cloud.sdk import RateLimitError
 from loguru import logger
 from tqdm import tqdm
 
 from src.configuration import config
 from src.data_models import Sample, SampleType
 from src.training.prompt_manager import SQLitePromptManger
+from src.training.sanitiser import sanitise
 from src.utils import LLM
 
 
@@ -110,7 +112,7 @@ class LLMSampleGenerator(SampleGenerator):
         async def track_task(task: asyncio.Future) -> str | Exception:
             try:
                 result = await task
-            except (TimeoutError, httpx.HTTPError, ValueError) as e:
+            except (TimeoutError, httpx.HTTPError, ValueError, RateLimitError) as e:
                 pbar.update(1)
                 # Return exception instead of raising.
                 return e
@@ -133,7 +135,7 @@ class LLMSampleGenerator(SampleGenerator):
             else:
                 samples.append(
                     Sample(
-                        text=response,
+                        text=sanitise(response),
                         label=SampleType.FULLY_LLM_WRITTEN,
                         author=model,
                         prompt_uuid=prompt_uuid,
@@ -200,7 +202,7 @@ class LLMSampleGenerator(SampleGenerator):
                         author="LLM from parquet fallback",
                         label=SampleType.FULLY_LLM_WRITTEN,
                         prompt_uuid=prompt_uuid,
-                        text=self._normalize_text(row[llm_response_col]),
+                        text=sanitise(self._normalize_text(row[llm_response_col])),
                     )
                 )
 
@@ -334,33 +336,38 @@ class MixedSampleGenerator(SampleGenerator):
             human_samples_count
         )
 
-        # Try to generate LLM samples from APIs, with fallback to Parquet file
-        try:
-            llm_samples = await self._llm_generator.generate_samples(llm_samples_count)
-        except (TimeoutError, ValueError, httpx.HTTPError) as e:
+        # Generate LLM samples from APIs
+        llm_samples = await self._llm_generator.generate_samples(llm_samples_count)
+
+        # Check if we got fewer samples than requested (due to rate limits or failures)
+        missing_count = llm_samples_count - len(llm_samples)
+        if missing_count > 0:
             logger.warning(
-                f"Failed to generate LLM samples via API ({type(e).__name__}): {e}. "
-                f"Attempting to use Parquet file as fallback..."
+                f"Only generated {len(llm_samples)}/{llm_samples_count} LLM samples "
+                f"via API. Attempting to fill {missing_count} missing samples from "
+                "Parquet fallback..."
             )
             try:
-                llm_samples = await self._llm_generator.generate_samples_from_parquet(
-                    llm_samples_count
+                parquet_samples = (
+                    await self._llm_generator.generate_samples_from_parquet(
+                        missing_count
+                    )
                 )
+                llm_samples.extend(parquet_samples)
                 logger.info(
-                    f"Successfully generated {len(llm_samples)} LLM samples from "
+                    f"Successfully filled {len(parquet_samples)} missing samples from "
                     "Parquet fallback."
                 )
             except (ValueError, FileNotFoundError, OSError) as parquet_error:
                 logger.warning(
-                    f"Failed to generate LLM samples from Parquet "
+                    f"Failed to generate missing samples from Parquet "
                     f"({type(parquet_error).__name__}): {parquet_error}. "
-                    f"Generating additional human samples instead."
+                    f"Generating {missing_count} additional human samples instead."
                 )
-                # When both fail, try to get the remaining samples from humans
+                # When parquet fails, fill the gap with human samples
                 additional_human_samples = await self._human_generator.generate_samples(
-                    llm_samples_count
+                    missing_count
                 )
-                llm_samples = []
                 human_samples.extend(additional_human_samples)
 
         # Check if we got partial results from API and need to fill the gap
