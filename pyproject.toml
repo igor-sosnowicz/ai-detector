@@ -5,6 +5,7 @@ description = "AI Detector for detection of LLM generated pieces of text."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "api-analytics[fastapi]>=1.2.7",
     "cerebras-cloud-sdk>=1.64.1",
     "diskcache>=5.6.3",
     "emoji>=2.15.0",

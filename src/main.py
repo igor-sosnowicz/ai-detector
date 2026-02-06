@@ -2,28 +2,50 @@
 
 import asyncio
 
-import uvicorn
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
 from loguru import logger
 from typer import Typer
 
-from src.api.router import lifespan
-from src.api.router import router as main_router
+from src.api.utils import get_ip_address_or_raise
 from src.configuration import config
-from src.training.evaluation import Evaluator
-from src.training.tuning import optimise
 
 app = Typer(no_args_is_help=True)
+
+description = """
+**Checktica** offers the API for checking if a text was written by AI or a human.
+
+## Why Checktica?
+
+- **99%+ accuracy** in AI text detection task.
+- **Free** to use. You pay exactly 0$.
+- **No API key** required.
+- **No text length limit**. Send as long texts as you need.
+"""
 
 
 @app.command("api")
 def run_api() -> None:
     """Start up the backed sharing the Web API."""
-    app = FastAPI(lifespan=lifespan)
+    import uvicorn
+    from api_analytics.fastapi import Analytics, Config
+    from fastapi import FastAPI
+    from fastapi.middleware.cors import CORSMiddleware
+    from fastapi.responses import RedirectResponse
 
-    app.add_middleware(
+    from src.api.router import lifespan
+    from src.api.router import router as main_router
+
+    fastapi_app = FastAPI(
+        title="Checktica",
+        summary="Checktica API detects AI-written texts.",
+        description=description,
+        lifespan=lifespan,
+        docs_url="/v1/docs",
+        openapi_url="/v1/openapi.json",
+        redoc_url="/v1/redoc",
+    )
+
+    # CORS configuration.
+    fastapi_app.add_middleware(
         CORSMiddleware,
         allow_origins=config.cors_origins,
         allow_credentials=True,
@@ -31,13 +53,23 @@ def run_api() -> None:
         allow_headers=["*"],
     )
 
-    @app.get("/")
+    # API usage analytics.
+    analytics_config = Config()
+    analytics_config.get_ip_address = get_ip_address_or_raise
+
+    fastapi_app.add_middleware(
+        Analytics,
+        api_key=config.apianalyticsdev_api_key,
+        config=analytics_config,
+    )
+
+    @fastapi_app.get("/")
     async def root() -> RedirectResponse:
         """Redirect root to docs."""
-        return RedirectResponse(url="/docs")
+        return RedirectResponse(url="/v1/docs")
 
-    app.include_router(main_router)
-    uvicorn.run(app, host=config.api_host, port=config.api_port)
+    fastapi_app.include_router(main_router, prefix="/v1")
+    uvicorn.run(fastapi_app, host=config.api_host, port=config.api_port)
 
 
 @app.command("optimise")
@@ -47,6 +79,8 @@ def optimise_detectors() -> None:
     from src.detection.heuristics import Heuristics
     from src.detection.spelling import SpellingDetector
     from src.ml.stylometric_classifier import StylometricClassifier
+    from src.training.evaluation import Evaluator
+    from src.training.tuning import optimise
 
     english_heuristics = Heuristics(language="english")
     perplexity_detector = CompressionBasedDetector()

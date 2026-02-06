@@ -24,6 +24,7 @@ class Configuration(BaseModel):
 
     open_router_api_key: str
     cerebras_api_key: str
+    apianalyticsdev_api_key: str
 
     llms_for_samples: list[str] = [
         "gpt-oss-120b",

@@ -18,6 +18,7 @@ name = "ai-detector"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "api-analytics", extra = ["fastapi"] },
     { name = "cerebras-cloud-sdk" },
     { name = "diskcache" },
     { name = "emoji" },
@@ -48,6 +49,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "api-analytics", extras = ["fastapi"], specifier = ">=1.2.7" },
     { name = "cerebras-cloud-sdk", specifier = ">=1.64.1" },
     { name = "diskcache", specifier = ">=5.6.3" },
     { name = "emoji", specifier = ">=2.15.0" },
@@ -119,6 +121,23 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/96/f0/5eb65b2bb0d09ac6776f2eb54adee6abe8228ea05b20a5ad0e4945de8aac/anyio-4.12.1.tar.gz", hash = "sha256:41cfcc3a4c85d3f05c932da7c26d0201ac36f72abd4435ba90d0464a3ffed703", size = 228685, upload-time = "2026-01-06T11:45:21.246Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/38/0e/27be9fdef66e72d64c0cdc3cc2823101b80585f8119b5c112c2e8f5f7dab/anyio-4.12.1-py3-none-any.whl", hash = "sha256:d405828884fc140aa80a3c667b8beed277f1dfedec42ba031bd6ac3db606ab6c", size = 113592, upload-time = "2026-01-06T11:45:19.497Z" },
+]
+
+[[package]]
+name = "api-analytics"
+version = "1.2.7"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/bf/a2/f8705c0dc526f83c4e2bf62e4579afcec97685a0c37730d384b47fc7bacb/api_analytics-1.2.7.tar.gz", hash = "sha256:e885aaf819b052fe2dc41f256f23e671f4696c7b23af6b3c5c3acdc7b81821ea", size = 14387, upload-time = "2025-05-17T11:56:23.434Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/aa/76/6099c5aefae407a24898d16b3aebc5f08c95c6b1bcf7fb840d01799f6982/api_analytics-1.2.7-py3-none-any.whl", hash = "sha256:eaff6c5d20457dec7fb95c54a0c45bbc7e0d7fdabfb5300e0ffce61a49808755", size = 13896, upload-time = "2025-05-17T11:56:21.843Z" },
+]
+
+[package.optional-dependencies]
+fastapi = [
+    { name = "fastapi" },
 ]
 
 [[package]]
