@@ -68,6 +68,11 @@ def run_api() -> None:
         """Redirect root to docs."""
         return RedirectResponse(url="/v1/docs")
 
+    @fastapi_app.get("/v1")
+    async def root_v1() -> RedirectResponse:
+        """Redirect /v1 to docs."""
+        return RedirectResponse(url="/v1/docs")
+
     fastapi_app.include_router(main_router, prefix="/v1")
     uvicorn.run(fastapi_app, host=config.api_host, port=config.api_port)
 
