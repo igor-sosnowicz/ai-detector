@@ -28,7 +28,6 @@ def run_api() -> None:
     import uvicorn
     from api_analytics.fastapi import Analytics, Config
     from fastapi import FastAPI
-    from fastapi.middleware.cors import CORSMiddleware
     from fastapi.responses import RedirectResponse
 
     from src.api.router import lifespan
@@ -44,14 +43,7 @@ def run_api() -> None:
         redoc_url="/v1/redoc",
     )
 
-    # CORS configuration.
-    fastapi_app.add_middleware(
-        CORSMiddleware,
-        allow_origins=config.cors_origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    # CORS is handled by nginx - no middleware needed here.
 
     # API usage analytics.
     analytics_config = Config()

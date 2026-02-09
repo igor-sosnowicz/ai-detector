@@ -80,7 +80,7 @@ class Heuristics(Detector):
             self._contains_emoji: self._contains_emoji_weight,
             self._contains_curly_symbols: self._contains_curly_symbols_weight,
             self._calculate_suspicious_phrases_frequency: (
-                self._calculate_suspicious_phrases_frequency_weight,
+                self._calculate_suspicious_phrases_frequency_weight
             ),
         }
         score = 0.0
@@ -95,22 +95,22 @@ class Heuristics(Detector):
     def _calculate_em_dashes_frequency(self, text: str) -> float:
         return text.count("—") / self._sentence_count
 
-    def _lacks_is_or_are(self, text: str) -> bool:
+    def _lacks_is_or_are(self, text: str) -> float:
         lowercase_text = text.lower()
-        return "is" in lowercase_text or "are" in lowercase_text
+        return float("is" in lowercase_text or "are" in lowercase_text)
 
-    def _has_not_only_but(self, text: str) -> bool:
-        return search(r"not only.+but", text.lower()) is not None
+    def _has_not_only_but(self, text: str) -> float:
+        return float(search(r"not only.+but", text.lower()) is not None)
 
-    def _has_its_not_just_its_about(self, text: str) -> bool:
-        return search(r"not just about.+it's", text.lower()) is not None
+    def _has_its_not_just_its_about(self, text: str) -> float:
+        return float(search(r"not just about.+it's", text.lower()) is not None)
 
-    def _contains_emoji(self, text: str) -> bool:
-        return bool(emoji.emoji_count(text))
+    def _contains_emoji(self, text: str) -> float:
+        return float(bool(emoji.emoji_count(text)))
 
-    def _contains_curly_symbols(self, text: str) -> bool:
+    def _contains_curly_symbols(self, text: str) -> float:
         curly_characters = "“”‘’’"  # noqa: RUF001, these marks are being checked for.
-        return any((character in text) for character in curly_characters)
+        return float(any((character in text) for character in curly_characters))
 
     def _calculate_suspicious_phrases_frequency(self, text: str) -> float:
         lowercased_text = text.lower()
